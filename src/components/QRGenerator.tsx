@@ -236,21 +236,28 @@ export const QRGenerator = () => {
       // Clear canvas
       ctx.clearRect(0, 0, frameSize, totalHeight);
       
-      // Draw QR code with shape
-      const qrImg = new Image();
-      qrImg.onload = () => {
-        const qrX = (frameSize - options.size) / 2;
-        const qrY = (frameSize - options.size) / 2;
-        
-        // Apply shape clipping
-        applyQRShape(ctx, qrX, qrY, options.size);
-        ctx.drawImage(qrImg, qrX, qrY, options.size, options.size);
-        ctx.restore();
-        
-        // Draw frame if selected
-        if (options.frameType !== "none") {
+        // Draw frame first if it's a background frame
+        if (options.frameType !== "none" && 
+            (options.frameType === "speech-bubble" || options.frameType === "wavy" || options.frameType === "card-style")) {
           drawFrame(ctx, frameSize);
         }
+        
+        // Draw QR code with shape
+        const qrImg = new Image();
+        qrImg.onload = () => {
+          const qrX = (frameSize - options.size) / 2;
+          const qrY = (frameSize - options.size) / 2;
+          
+          // Apply shape clipping
+          applyQRShape(ctx, qrX, qrY, options.size);
+          ctx.drawImage(qrImg, qrX, qrY, options.size, options.size);
+          ctx.restore();
+          
+          // Draw frame if selected (for border frames)
+          if (options.frameType !== "none" && 
+              !(options.frameType === "speech-bubble" || options.frameType === "wavy" || options.frameType === "card-style")) {
+            drawFrame(ctx, frameSize);
+          }
         
         // Draw logo if uploaded
         if (logoDataUrl) {
