@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Download, Upload, Palette, QrCode } from "lucide-react";
+import { Download, Upload, Palette, QrCode, Square } from "lucide-react";
 import { toast } from "sonner";
 
 interface QROptions {
@@ -17,6 +17,8 @@ interface QROptions {
   backgroundColor: string;
   errorCorrectionLevel: "L" | "M" | "Q" | "H";
   margin: number;
+  frameType: "none" | "simple" | "rounded" | "gradient" | "neon" | "vintage";
+  frameColor: string;
 }
 
 export const QRGenerator = () => {
@@ -27,6 +29,8 @@ export const QRGenerator = () => {
     backgroundColor: "#ffffff",
     errorCorrectionLevel: "M",
     margin: 4,
+    frameType: "none",
+    frameColor: "#6366f1",
   });
   
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -38,6 +42,65 @@ export const QRGenerator = () => {
   useEffect(() => {
     generateQR();
   }, [options, logoDataUrl]);
+
+  const drawFrame = (ctx: CanvasRenderingContext2D, frameSize: number) => {
+    const padding = frameSize * 0.1;
+    const frameWidth = frameSize - padding * 2;
+    const frameHeight = frameSize - padding * 2;
+    
+    ctx.save();
+    
+    switch (options.frameType) {
+      case "simple":
+        ctx.strokeStyle = options.frameColor;
+        ctx.lineWidth = 8;
+        ctx.strokeRect(padding, padding, frameWidth, frameHeight);
+        break;
+        
+      case "rounded":
+        const radius = 20;
+        ctx.strokeStyle = options.frameColor;
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.roundRect(padding, padding, frameWidth, frameHeight, radius);
+        ctx.stroke();
+        break;
+        
+      case "gradient":
+        const gradient = ctx.createLinearGradient(0, 0, frameSize, frameSize);
+        gradient.addColorStop(0, options.frameColor);
+        gradient.addColorStop(0.5, options.backgroundColor);
+        gradient.addColorStop(1, options.frameColor);
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 12;
+        ctx.strokeRect(padding, padding, frameWidth, frameHeight);
+        break;
+        
+      case "neon":
+        // Outer glow
+        ctx.shadowColor = options.frameColor;
+        ctx.shadowBlur = 20;
+        ctx.strokeStyle = options.frameColor;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(padding, padding, frameWidth, frameHeight);
+        // Inner glow
+        ctx.shadowBlur = 10;
+        ctx.strokeRect(padding + 4, padding + 4, frameWidth - 8, frameHeight - 8);
+        break;
+        
+      case "vintage":
+        // Double border effect
+        ctx.strokeStyle = options.frameColor;
+        ctx.lineWidth = 12;
+        ctx.strokeRect(padding, padding, frameWidth, frameHeight);
+        ctx.strokeStyle = options.backgroundColor;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(padding + 4, padding + 4, frameWidth - 8, frameHeight - 8);
+        break;
+    }
+    
+    ctx.restore();
+  };
 
   const generateQR = async () => {
     try {
@@ -55,33 +118,46 @@ export const QRGenerator = () => {
 
       const dataUrl = await QRCode.toDataURL(options.text, qrOptions);
       
-      if (logoDataUrl) {
-        // Composite QR code with logo
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+      // Always use canvas for compositing (frame + logo)
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Add extra space for frames
+      const frameSize = options.frameType !== "none" ? options.size + 60 : options.size;
+      canvas.width = frameSize;
+      canvas.height = frameSize;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, frameSize, frameSize);
+      
+      // Draw QR code
+      const qrImg = new Image();
+      qrImg.onload = () => {
+        const qrX = (frameSize - options.size) / 2;
+        const qrY = (frameSize - options.size) / 2;
         
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        canvas.width = options.size;
-        canvas.height = options.size;
-
-        // Draw QR code
-        const qrImg = new Image();
-        qrImg.onload = () => {
-          ctx.drawImage(qrImg, 0, 0, options.size, options.size);
-          
-          // Draw logo in center
+        ctx.drawImage(qrImg, qrX, qrY, options.size, options.size);
+        
+        // Draw frame if selected
+        if (options.frameType !== "none") {
+          drawFrame(ctx, frameSize);
+        }
+        
+        // Draw logo if uploaded
+        if (logoDataUrl) {
           const logoImg = new Image();
           logoImg.onload = () => {
-            const logoSize = options.size * 0.2; // Logo is 20% of QR size
-            const logoX = (options.size - logoSize) / 2;
-            const logoY = (options.size - logoSize) / 2;
+            const logoSize = options.size * 0.2;
+            const logoX = (frameSize - logoSize) / 2;
+            const logoY = (frameSize - logoSize) / 2;
             
-            // Add white background circle for logo
+            // Add background circle for logo
             ctx.fillStyle = options.backgroundColor;
             ctx.beginPath();
-            ctx.arc(options.size / 2, options.size / 2, logoSize / 2 + 5, 0, 2 * Math.PI);
+            ctx.arc(frameSize / 2, frameSize / 2, logoSize / 2 + 5, 0, 2 * Math.PI);
             ctx.fill();
             
             // Draw logo
@@ -91,11 +167,12 @@ export const QRGenerator = () => {
             setQrDataUrl(finalDataUrl);
           };
           logoImg.src = logoDataUrl;
-        };
-        qrImg.src = dataUrl;
-      } else {
-        setQrDataUrl(dataUrl);
-      }
+        } else {
+          const finalDataUrl = canvas.toDataURL('image/png');
+          setQrDataUrl(finalDataUrl);
+        }
+      };
+      qrImg.src = dataUrl;
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast.error("Failed to generate QR code");
@@ -241,6 +318,52 @@ export const QRGenerator = () => {
             </Select>
           </div>
 
+          {/* Frame Selection */}
+          <div className="space-y-3">
+            <Label className="text-foreground font-medium flex items-center gap-2">
+              <Square className="w-4 h-4" />
+              Frame Style
+            </Label>
+            <Select 
+              value={options.frameType} 
+              onValueChange={(value: typeof options.frameType) => 
+                setOptions(prev => ({ ...prev, frameType: value }))
+              }
+            >
+              <SelectTrigger className="bg-background/50 border-border focus:border-qr-primary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Frame</SelectItem>
+                <SelectItem value="simple">Simple Border</SelectItem>
+                <SelectItem value="rounded">Rounded Frame</SelectItem>
+                <SelectItem value="gradient">Gradient Frame</SelectItem>
+                <SelectItem value="neon">Neon Glow</SelectItem>
+                <SelectItem value="vintage">Vintage Style</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {options.frameType !== "none" && (
+              <div className="space-y-2">
+                <Label htmlFor="frame-color" className="text-foreground font-medium">Frame Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="frame-color"
+                    type="color"
+                    value={options.frameColor}
+                    onChange={(e) => setOptions(prev => ({ ...prev, frameColor: e.target.value }))}
+                    className="w-16 h-10 p-1 border-border"
+                  />
+                  <Input
+                    value={options.frameColor}
+                    onChange={(e) => setOptions(prev => ({ ...prev, frameColor: e.target.value }))}
+                    className="flex-1 bg-background/50 border-border focus:border-qr-primary"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Logo Upload */}
           <div className="space-y-3">
             <Label className="text-foreground font-medium flex items-center gap-2">
@@ -319,6 +442,7 @@ export const QRGenerator = () => {
               <p>Size: {options.size}×{options.size}px</p>
               <p>Error Correction: {options.errorCorrectionLevel}</p>
               <p>Content Length: {options.text.length} characters</p>
+              <p>Frame: {options.frameType === "none" ? "No Frame" : options.frameType}</p>
               {logoFile && <p>Logo: {logoFile.name}</p>}
             </div>
           </div>
