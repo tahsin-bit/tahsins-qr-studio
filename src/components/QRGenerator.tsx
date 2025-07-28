@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Download, Upload, Palette, QrCode, Square } from "lucide-react";
+import { Download, Upload, Palette, QrCode, Square, Shapes, Type } from "lucide-react";
 import { toast } from "sonner";
 
 interface QROptions {
@@ -19,6 +19,10 @@ interface QROptions {
   margin: number;
   frameType: "none" | "simple" | "rounded" | "gradient" | "neon" | "vintage";
   frameColor: string;
+  shape: "square" | "rounded" | "circle" | "hexagon";
+  bottomText: string;
+  bottomTextColor: string;
+  bottomTextSize: number;
 }
 
 export const QRGenerator = () => {
@@ -31,6 +35,10 @@ export const QRGenerator = () => {
     margin: 4,
     frameType: "none",
     frameColor: "#6366f1",
+    shape: "square",
+    bottomText: "Scan Me",
+    bottomTextColor: "#000000",
+    bottomTextSize: 16,
   });
   
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -42,6 +50,36 @@ export const QRGenerator = () => {
   useEffect(() => {
     generateQR();
   }, [options, logoDataUrl]);
+
+  const applyQRShape = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
+    ctx.save();
+    ctx.beginPath();
+    
+    switch (options.shape) {
+      case "rounded":
+        const radius = size * 0.1;
+        ctx.roundRect(x, y, size, size, radius);
+        break;
+      case "circle":
+        ctx.arc(x + size/2, y + size/2, size/2, 0, 2 * Math.PI);
+        break;
+      case "hexagon":
+        const centerX = x + size/2;
+        const centerY = y + size/2;
+        const hexRadius = size/2;
+        ctx.moveTo(centerX + hexRadius, centerY);
+        for (let i = 1; i <= 6; i++) {
+          const angle = (i * Math.PI) / 3;
+          ctx.lineTo(centerX + hexRadius * Math.cos(angle), centerY + hexRadius * Math.sin(angle));
+        }
+        ctx.closePath();
+        break;
+      default: // square
+        ctx.rect(x, y, size, size);
+    }
+    
+    ctx.clip();
+  };
 
   const drawFrame = (ctx: CanvasRenderingContext2D, frameSize: number) => {
     const padding = frameSize * 0.1;
@@ -125,21 +163,27 @@ export const QRGenerator = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Add extra space for frames
-      const frameSize = options.frameType !== "none" ? options.size + 60 : options.size;
+      // Add extra space for frames and bottom text
+      const extraSpace = options.frameType !== "none" ? 60 : 0;
+      const textSpace = options.bottomText ? 40 : 0;
+      const frameSize = options.size + extraSpace;
+      const totalHeight = frameSize + textSpace;
       canvas.width = frameSize;
-      canvas.height = frameSize;
+      canvas.height = totalHeight;
 
       // Clear canvas
-      ctx.clearRect(0, 0, frameSize, frameSize);
+      ctx.clearRect(0, 0, frameSize, totalHeight);
       
-      // Draw QR code
+      // Draw QR code with shape
       const qrImg = new Image();
       qrImg.onload = () => {
         const qrX = (frameSize - options.size) / 2;
         const qrY = (frameSize - options.size) / 2;
         
+        // Apply shape clipping
+        applyQRShape(ctx, qrX, qrY, options.size);
         ctx.drawImage(qrImg, qrX, qrY, options.size, options.size);
+        ctx.restore();
         
         // Draw frame if selected
         if (options.frameType !== "none") {
@@ -163,11 +207,27 @@ export const QRGenerator = () => {
             // Draw logo
             ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
             
+            // Draw bottom text if provided
+            if (options.bottomText) {
+              ctx.fillStyle = options.bottomTextColor;
+              ctx.font = `${options.bottomTextSize}px Arial`;
+              ctx.textAlign = 'center';
+              ctx.fillText(options.bottomText, frameSize / 2, frameSize + 25);
+            }
+            
             const finalDataUrl = canvas.toDataURL('image/png');
             setQrDataUrl(finalDataUrl);
           };
           logoImg.src = logoDataUrl;
         } else {
+          // Draw bottom text if provided and no logo
+          if (options.bottomText) {
+            ctx.fillStyle = options.bottomTextColor;
+            ctx.font = `${options.bottomTextSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(options.bottomText, frameSize / 2, frameSize + 25);
+          }
+          
           const finalDataUrl = canvas.toDataURL('image/png');
           setQrDataUrl(finalDataUrl);
         }
@@ -358,6 +418,78 @@ export const QRGenerator = () => {
                     value={options.frameColor}
                     onChange={(e) => setOptions(prev => ({ ...prev, frameColor: e.target.value }))}
                     className="flex-1 bg-background/50 border-border focus:border-qr-primary"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* QR Shape Selection */}
+          <div className="space-y-3">
+            <Label className="text-foreground font-medium flex items-center gap-2">
+              <Shapes className="w-4 h-4" />
+              QR Shape
+            </Label>
+            <Select 
+              value={options.shape} 
+              onValueChange={(value: typeof options.shape) => 
+                setOptions(prev => ({ ...prev, shape: value }))
+              }
+            >
+              <SelectTrigger className="bg-background/50 border-border focus:border-qr-primary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="square">Square</SelectItem>
+                <SelectItem value="rounded">Rounded Corners</SelectItem>
+                <SelectItem value="circle">Circle</SelectItem>
+                <SelectItem value="hexagon">Hexagon</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Bottom Text */}
+          <div className="space-y-3">
+            <Label className="text-foreground font-medium flex items-center gap-2">
+              <Type className="w-4 h-4" />
+              Bottom Text (Optional)
+            </Label>
+            <Input
+              placeholder="e.g., Scan Me, Visit Website..."
+              value={options.bottomText}
+              onChange={(e) => setOptions(prev => ({ ...prev, bottomText: e.target.value }))}
+              className="bg-background/50 border-border focus:border-qr-primary"
+            />
+            
+            {options.bottomText && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="text-color" className="text-foreground font-medium">Text Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="text-color"
+                      type="color"
+                      value={options.bottomTextColor}
+                      onChange={(e) => setOptions(prev => ({ ...prev, bottomTextColor: e.target.value }))}
+                      className="w-16 h-10 p-1 border-border"
+                    />
+                    <Input
+                      value={options.bottomTextColor}
+                      onChange={(e) => setOptions(prev => ({ ...prev, bottomTextColor: e.target.value }))}
+                      className="flex-1 bg-background/50 border-border focus:border-qr-primary"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label className="text-foreground font-medium">Text Size: {options.bottomTextSize}px</Label>
+                  <Slider
+                    value={[options.bottomTextSize]}
+                    onValueChange={(value) => setOptions(prev => ({ ...prev, bottomTextSize: value[0] }))}
+                    max={24}
+                    min={12}
+                    step={1}
+                    className="w-full"
                   />
                 </div>
               </div>
