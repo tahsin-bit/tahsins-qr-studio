@@ -1,8 +1,6 @@
 import { QrCode, Sparkles } from "lucide-react";
-
 export const Header = () => {
-  return (
-    <header className="relative overflow-hidden bg-gradient-card border-b border-qr-primary/20 backdrop-blur-sm">
+  return <header className="relative overflow-hidden bg-gradient-card border-b border-qr-primary/20 backdrop-blur-sm">
       <div className="absolute inset-0 bg-gradient-primary opacity-5" />
       <div className="relative max-w-7xl mx-auto px-6 py-12">
         <div className="text-center space-y-4">
@@ -10,9 +8,7 @@ export const Header = () => {
             <div className="p-3 bg-qr-primary/20 rounded-full border border-qr-primary/30 shadow-glow">
               <QrCode className="w-8 h-8 text-qr-primary" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              QR Studio
-            </h1>
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">Tahsin's QR Studio</h1>
             <Sparkles className="w-6 h-6 text-qr-secondary animate-pulse" />
           </div>
           
@@ -37,6 +33,5 @@ export const Header = () => {
           </div>
         </div>
       </div>
-    </header>
-  );
+    </header>;
 };
