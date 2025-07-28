@@ -17,7 +17,7 @@ interface QROptions {
   backgroundColor: string;
   errorCorrectionLevel: "L" | "M" | "Q" | "H";
   margin: number;
-  frameType: "none" | "simple" | "rounded" | "gradient" | "neon" | "vintage";
+  frameType: "none" | "simple" | "rounded" | "gradient" | "neon" | "vintage" | "speech-bubble" | "wavy" | "card-style";
   frameColor: string;
   shape: "square" | "rounded" | "circle" | "hexagon";
   bottomText: string;
@@ -134,6 +134,68 @@ export const QRGenerator = () => {
         ctx.strokeStyle = options.backgroundColor;
         ctx.lineWidth = 4;
         ctx.strokeRect(padding + 4, padding + 4, frameWidth - 8, frameHeight - 8);
+        break;
+        
+      case "speech-bubble":
+        // Speech bubble style frame
+        ctx.fillStyle = options.frameColor;
+        const bubbleRadius = 20;
+        const tailSize = 20;
+        ctx.beginPath();
+        ctx.roundRect(padding, padding, frameWidth, frameHeight - tailSize, bubbleRadius);
+        ctx.fill();
+        // Add speech bubble tail
+        ctx.beginPath();
+        ctx.moveTo(frameSize / 2 - tailSize / 2, frameHeight + padding - tailSize);
+        ctx.lineTo(frameSize / 2, frameHeight + padding);
+        ctx.lineTo(frameSize / 2 + tailSize / 2, frameHeight + padding - tailSize);
+        ctx.closePath();
+        ctx.fill();
+        break;
+        
+      case "wavy":
+        // Wavy edge frame
+        ctx.fillStyle = options.frameColor;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding + 10);
+        // Top wavy edge
+        for (let x = padding; x <= padding + frameWidth; x += 10) {
+          const y = padding + 5 * Math.sin((x - padding) * 0.1) + 5;
+          ctx.lineTo(x, y);
+        }
+        // Right wavy edge
+        for (let y = padding; y <= padding + frameHeight; y += 10) {
+          const x = padding + frameWidth - 5 * Math.sin((y - padding) * 0.1) - 5;
+          ctx.lineTo(x, y);
+        }
+        // Bottom wavy edge
+        for (let x = padding + frameWidth; x >= padding; x -= 10) {
+          const y = padding + frameHeight - 5 * Math.sin((x - padding) * 0.1) - 5;
+          ctx.lineTo(x, y);
+        }
+        // Left wavy edge
+        for (let y = padding + frameHeight; y >= padding; y -= 10) {
+          const x = padding + 5 * Math.sin((y - padding) * 0.1) + 5;
+          ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        break;
+        
+      case "card-style":
+        // Card-style frame with border and shadow effect
+        ctx.fillStyle = options.frameColor;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
+        ctx.fillRect(padding, padding, frameWidth, frameHeight);
+        // Inner white border
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = '#ffffff';
+        const borderWidth = 10;
+        ctx.fillRect(padding + borderWidth, padding + borderWidth, 
+                    frameWidth - borderWidth * 2, frameHeight - borderWidth * 2);
         break;
     }
     
@@ -400,6 +462,9 @@ export const QRGenerator = () => {
                 <SelectItem value="gradient">Gradient Frame</SelectItem>
                 <SelectItem value="neon">Neon Glow</SelectItem>
                 <SelectItem value="vintage">Vintage Style</SelectItem>
+                <SelectItem value="speech-bubble">Speech Bubble</SelectItem>
+                <SelectItem value="wavy">Wavy Edge</SelectItem>
+                <SelectItem value="card-style">Card Style</SelectItem>
               </SelectContent>
             </Select>
             
