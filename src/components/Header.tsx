@@ -1,5 +1,9 @@
-import { QrCode, Sparkles } from "lucide-react";
+import { QrCode, Sparkles, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 export const Header = () => {
+  const navigate = useNavigate();
+  
   return <header className="relative overflow-hidden bg-gradient-card border-b border-qr-primary/20 backdrop-blur-sm">
       <div className="absolute inset-0 bg-gradient-primary opacity-5" />
       <div className="relative max-w-7xl mx-auto px-6 py-12">
@@ -17,19 +21,30 @@ export const Header = () => {
             Perfect for branding, marketing, and professional use.
           </p>
           
-          <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-qr-primary rounded-full" />
-              <span>Custom Colors</span>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-qr-primary rounded-full" />
+                <span>Custom Colors</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-qr-secondary rounded-full" />
+                <span>Logo Integration</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-qr-accent rounded-full" />
+                <span>High Quality</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-qr-secondary rounded-full" />
-              <span>Logo Integration</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-qr-accent rounded-full" />
-              <span>High Quality</span>
-            </div>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/profile-builder')}
+              className="gap-2 bg-background/80 backdrop-blur-sm hover:bg-background/90"
+            >
+              <User className="w-4 h-4" />
+              Create Web Profile
+            </Button>
           </div>
         </div>
       </div>

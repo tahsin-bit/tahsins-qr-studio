@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MultiLinkLanding } from "./components/MultiLinkLanding";
+import { WebProfileBuilder } from "./components/WebProfileBuilder";
+import { WebProfileView } from "./components/WebProfileView";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -18,6 +20,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/multi-links" element={<MultiLinkLanding />} />
+          <Route path="/profile-builder" element={<WebProfileBuilder />} />
+          <Route path="/profile/:id" element={<WebProfileView />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
