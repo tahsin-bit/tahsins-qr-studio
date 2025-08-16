@@ -7,8 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Download, Upload, Palette, QrCode, Square, Shapes, Type } from "lucide-react";
+import { Download, Upload, Palette, QrCode, Square, Shapes, Type, Plus, Minus, Link } from "lucide-react";
 import { toast } from "sonner";
+
+interface LinkData {
+  title: string;
+  url: string;
+  description?: string;
+}
 
 interface QROptions {
   text: string;
@@ -23,6 +29,8 @@ interface QROptions {
   bottomText: string;
   bottomTextColor: string;
   bottomTextSize: number;
+  isMultiLink: boolean;
+  multiLinkTitle: string;
 }
 
 export const QRGenerator = () => {
@@ -39,11 +47,14 @@ export const QRGenerator = () => {
     bottomText: "Scan Me",
     bottomTextColor: "#000000",
     bottomTextSize: 16,
+    isMultiLink: false,
+    multiLinkTitle: "Select a Link",
   });
   
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string>("");
+  const [links, setLinks] = useState<LinkData[]>([{ title: "Website", url: "https://lovable.dev", description: "" }]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -216,7 +227,18 @@ export const QRGenerator = () => {
         width: options.size,
       };
 
-      const dataUrl = await QRCode.toDataURL(options.text, qrOptions);
+      // Generate QR content based on single or multi-link mode
+      let qrContent = options.text;
+      if (options.isMultiLink && links.length > 0) {
+        const multiLinkData = {
+          title: options.multiLinkTitle,
+          links: links.filter(link => link.title && link.url)
+        };
+        const encodedData = btoa(JSON.stringify(multiLinkData));
+        qrContent = `${window.location.origin}/multi-links?data=${encodedData}`;
+      }
+
+      const dataUrl = await QRCode.toDataURL(qrContent, qrOptions);
       
       // Always use canvas for compositing (frame + logo)
       const canvas = canvasRef.current;
@@ -347,6 +369,22 @@ export const QRGenerator = () => {
     toast.success("Logo removed");
   };
 
+  const addLink = () => {
+    setLinks(prev => [...prev, { title: "", url: "", description: "" }]);
+  };
+
+  const removeLink = (index: number) => {
+    if (links.length > 1) {
+      setLinks(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateLink = (index: number, field: keyof LinkData, value: string) => {
+    setLinks(prev => prev.map((link, i) => 
+      i === index ? { ...link, [field]: value } : link
+    ));
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
       {/* Controls Panel */}
@@ -359,17 +397,116 @@ export const QRGenerator = () => {
             </h2>
           </div>
 
-          {/* Text Input */}
-          <div className="space-y-2">
-            <Label htmlFor="text" className="text-foreground font-medium">Content</Label>
-            <Textarea
-              id="text"
-              placeholder="Enter text or URL..."
-              value={options.text}
-              onChange={(e) => setOptions(prev => ({ ...prev, text: e.target.value }))}
-              className="min-h-[100px] bg-background/50 border-border focus:border-qr-primary"
-            />
+          {/* Mode Selection */}
+          <div className="space-y-3">
+            <Label className="text-foreground font-medium flex items-center gap-2">
+              <Link className="w-4 h-4" />
+              QR Code Mode
+            </Label>
+            <Select 
+              value={options.isMultiLink ? "multi" : "single"} 
+              onValueChange={(value) => 
+                setOptions(prev => ({ ...prev, isMultiLink: value === "multi" }))
+              }
+            >
+              <SelectTrigger className="bg-background/50 border-border focus:border-qr-primary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single">Single Link/Text</SelectItem>
+                <SelectItem value="multi">Multiple Links</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Single Link/Text Input */}
+          {!options.isMultiLink && (
+            <div className="space-y-2">
+              <Label htmlFor="text" className="text-foreground font-medium">Content</Label>
+              <Textarea
+                id="text"
+                placeholder="Enter text or URL..."
+                value={options.text}
+                onChange={(e) => setOptions(prev => ({ ...prev, text: e.target.value }))}
+                className="min-h-[100px] bg-background/50 border-border focus:border-qr-primary"
+              />
+            </div>
+          )}
+
+          {/* Multiple Links Input */}
+          {options.isMultiLink && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="multiTitle" className="text-foreground font-medium">Landing Page Title</Label>
+                <Input
+                  id="multiTitle"
+                  placeholder="e.g., My Social Links"
+                  value={options.multiLinkTitle}
+                  onChange={(e) => setOptions(prev => ({ ...prev, multiLinkTitle: e.target.value }))}
+                  className="bg-background/50 border-border focus:border-qr-primary"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-foreground font-medium">Links</Label>
+                  <Button
+                    type="button"
+                    onClick={addLink}
+                    size="sm"
+                    variant="outline"
+                    className="bg-background/50 hover:bg-qr-primary/10"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Link
+                  </Button>
+                </div>
+
+                {links.map((link, index) => (
+                  <Card key={index} className="p-4 bg-background/30 border-border/50">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">Link {index + 1}</span>
+                        {links.length > 1 && (
+                          <Button
+                            type="button"
+                            onClick={() => removeLink(index)}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Link title"
+                          value={link.title}
+                          onChange={(e) => updateLink(index, 'title', e.target.value)}
+                          className="bg-background/50 border-border focus:border-qr-primary"
+                        />
+                        <Input
+                          placeholder="https://..."
+                          value={link.url}
+                          onChange={(e) => updateLink(index, 'url', e.target.value)}
+                          className="bg-background/50 border-border focus:border-qr-primary"
+                        />
+                      </div>
+                      
+                      <Input
+                        placeholder="Description (optional)"
+                        value={link.description || ""}
+                        onChange={(e) => updateLink(index, 'description', e.target.value)}
+                        className="bg-background/50 border-border focus:border-qr-primary"
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Size Control */}
           <div className="space-y-3">
